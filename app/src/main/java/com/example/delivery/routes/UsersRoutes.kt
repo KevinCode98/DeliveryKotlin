@@ -11,7 +11,7 @@ import retrofit2.http.*
 
 interface UsersRoutes {
     @GET("users/findDeliveryMen")
-    fun findDeliveryMen(
+    fun getDeliveryMen(
         @Header("Authorization") token: String
     ): Call<ArrayList<User>>
 

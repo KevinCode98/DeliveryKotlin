@@ -206,7 +206,6 @@ class RestaurantProductFragment : Fragment() {
                             override fun onNothingSelected(parent: AdapterView<*>?) {
 
                             }
-
                         }
                 }
             }

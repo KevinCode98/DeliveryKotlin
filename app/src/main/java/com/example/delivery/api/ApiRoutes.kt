@@ -3,7 +3,7 @@ package com.example.delivery.api
 import com.example.delivery.routes.*
 
 class ApiRoutes {
-    val API_URL = "http://192.168.137.183:3000/api/"
+    val API_URL = "http://192.168.0.153:3000/api/"
     val retrofit = RetrofitClient()
 
     fun getUsersRoutes(): UsersRoutes {

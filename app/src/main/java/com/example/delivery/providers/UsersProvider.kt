@@ -1,6 +1,7 @@
 package com.example.delivery.providers
 
 import com.example.delivery.api.ApiRoutes
+import com.example.delivery.models.Category
 import com.example.delivery.models.ResponseHttp
 import com.example.delivery.models.User
 import com.example.delivery.routes.UsersRoutes
@@ -21,6 +22,10 @@ class UsersProvider(val token: String? = null) {
         if(token != null){
             usersRoutesToken = api.getUsersRoutesWithToken(token!!)
         }
+    }
+
+    fun getDeliveryMen(): Call<ArrayList<User>>? {
+        return usersRoutesToken?.getDeliveryMen(token!!)
     }
 
     fun register(user: User): Call<ResponseHttp>? {
