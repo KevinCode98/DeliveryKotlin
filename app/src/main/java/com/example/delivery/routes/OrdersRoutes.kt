@@ -31,4 +31,11 @@ interface OrdersRoutes {
         @Path("status") status: String,
         @Header("Authorization") token: String
     ): Call<ArrayList<Order>>
+
+    @GET("orders/findByDeliveryAndStatus/{id_delivery}/{status}")
+    fun getOrderByDeliveryAndStatus(
+        @Path("id_delivery") idDelivery: String,
+        @Path("status") status: String,
+        @Header("Authorization") token: String
+    ): Call<ArrayList<Order>>
 }

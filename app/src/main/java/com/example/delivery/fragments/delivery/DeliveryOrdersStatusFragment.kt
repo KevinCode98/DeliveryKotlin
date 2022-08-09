@@ -51,23 +51,25 @@ class DeliveryOrdersStatusFragment : Fragment() {
     }
 
     private fun getOrders() {
-        ordersProvider?.getOrdersByStatus(status)?.enqueue(object : Callback<ArrayList<Order>> {
-            override fun onResponse(
-                call: Call<ArrayList<Order>>,
-                response: Response<ArrayList<Order>>
-            ) {
-                if (response.body() != null) {
-                    val orders = response.body()
-                    adapter = OrdersDeliveryAdapter(requireActivity(), orders!!)
-                    recyclerViewOrders?.adapter = adapter
+        ordersProvider?.getOrdersByDeliveryAndStatus(user?.id!!, status)
+            ?.enqueue(object : Callback<ArrayList<Order>> {
+                override fun onResponse(
+                    call: Call<ArrayList<Order>>,
+                    response: Response<ArrayList<Order>>
+                ) {
+                    if (response.body() != null) {
+                        val orders = response.body()
+                        adapter = OrdersDeliveryAdapter(requireActivity(), orders!!)
+                        recyclerViewOrders?.adapter = adapter
+                    }
                 }
-            }
 
-            override fun onFailure(call: Call<ArrayList<Order>>, t: Throwable) {
-                Toast.makeText(requireActivity(), "Error: ${t.message}", Toast.LENGTH_LONG).show()
-            }
+                override fun onFailure(call: Call<ArrayList<Order>>, t: Throwable) {
+                    Toast.makeText(requireActivity(), "Error: ${t.message}", Toast.LENGTH_LONG)
+                        .show()
+                }
 
-        })
+            })
     }
 
     private fun getUserFromSession() {
