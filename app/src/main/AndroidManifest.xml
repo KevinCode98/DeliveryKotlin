@@ -25,9 +25,12 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
+            android:name=".activities.delivery.orders.map.DeliveryOrdersMapActivity"
+            android:exported="false" />
+        <activity
             android:name=".activities.delivery.orders.detail.DeliveryOrdersDetailActivity"
             android:exported="false"
-            android:parentActivityName=".activities.delivery.home.DeliveryHomeActivity"/>
+            android:parentActivityName=".activities.delivery.home.DeliveryHomeActivity" />
         <activity
             android:name=".activities.restaurant.orders.detail.RestaurantOrdersDetailActivity"
             android:exported="true"

@@ -152,6 +152,19 @@
             android:visibility="gone"
             app:backgroundTint="@color/blue" />
 
+        <Button
+            android:id="@+id/btn_go_to_map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/rounded_button"
+            android:text="Volver al mapa"
+            android:textColor="@color/white"
+            android:visibility="gone"
+            app:backgroundTint="@color/orange" />
+
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

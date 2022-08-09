@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.delivery.R
+import com.example.delivery.activities.delivery.home.DeliveryHomeActivity
+import com.example.delivery.activities.delivery.orders.map.DeliveryOrdersMapActivity
 import com.example.delivery.activities.restaurant.home.RestaurantHomeActivity
 import com.example.delivery.adapters.OrderProductsAdapter
 import com.example.delivery.models.Category
@@ -36,6 +38,7 @@ class DeliveryOrdersDetailActivity : AppCompatActivity() {
     var textViewTotal: TextView? = null
     var textViewStatus: TextView? = null
     var buttonUpdate: Button? = null
+    var buttonGoToMap: Button? = null
     var recyclerViewProducts: RecyclerView? = null
     var adapter: OrderProductsAdapter? = null
     var usersProvider: UsersProvider? = null
@@ -61,6 +64,7 @@ class DeliveryOrdersDetailActivity : AppCompatActivity() {
         textViewTotal = findViewById(R.id.textview_total)
         textViewStatus = findViewById(R.id.textview_status)
         buttonUpdate = findViewById(R.id.btn_update)
+        buttonGoToMap = findViewById(R.id.btn_go_to_map)
         recyclerViewProducts = findViewById(R.id.recyclerview_products)
         recyclerViewProducts?.layoutManager = LinearLayoutManager(this)
 
@@ -80,24 +84,28 @@ class DeliveryOrdersDetailActivity : AppCompatActivity() {
         Log.d(TAG, "Order: ${order.toString()}")
         getTotal()
         buttonUpdate?.setOnClickListener { updateOrder() }
+        buttonGoToMap?.setOnClickListener { goToMap() }
 
         if (order?.status == "DESPACHADO") {
             buttonUpdate?.visibility = View.VISIBLE
         }
+
+        if (order?.status == "EN CAMINO") {
+            buttonGoToMap?.visibility = View.VISIBLE
+        }
     }
 
     private fun updateOrder() {
-        order?.idDelivery = idDelivery
-        orderProvider?.updateToDispatched(order!!)?.enqueue(object : Callback<ResponseHttp> {
+        orderProvider?.updateToOnWay(order!!)?.enqueue(object : Callback<ResponseHttp> {
             override fun onResponse(call: Call<ResponseHttp>, response: Response<ResponseHttp>) {
                 if (response.body() != null) {
                     if (response.body()?.isSuccess == true) {
                         Toast.makeText(
                             this@DeliveryOrdersDetailActivity,
-                            "Repartidor asignado correctamente",
+                            "Entrega Iniciada",
                             Toast.LENGTH_LONG
                         ).show()
-                        goToOrders()
+                        goToMap()
                     } else {
                         Toast.makeText(
                             this@DeliveryOrdersDetailActivity,
@@ -125,9 +133,8 @@ class DeliveryOrdersDetailActivity : AppCompatActivity() {
         })
     }
 
-    private fun goToOrders() {
-        val i = Intent(this, RestaurantHomeActivity::class.java)
-        i.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+    private fun goToMap() {
+        val i = Intent(this, DeliveryOrdersMapActivity::class.java)
         startActivity(i)
     }
 
