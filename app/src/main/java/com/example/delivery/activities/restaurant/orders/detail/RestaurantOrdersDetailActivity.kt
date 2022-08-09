@@ -1,5 +1,6 @@
 package com.example.delivery.activities.restaurant.orders.detail
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -10,10 +11,13 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.delivery.R
+import com.example.delivery.activities.restaurant.home.RestaurantHomeActivity
 import com.example.delivery.adapters.OrderProductsAdapter
 import com.example.delivery.models.Category
 import com.example.delivery.models.Order
+import com.example.delivery.models.ResponseHttp
 import com.example.delivery.models.User
+import com.example.delivery.providers.OrdersProvider
 import com.example.delivery.providers.UsersProvider
 import com.example.delivery.utils.SharedPref
 import com.google.gson.Gson
@@ -31,10 +35,13 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
     var textViewDate: TextView? = null
     var textViewTotal: TextView? = null
     var textViewStatus: TextView? = null
+    var textViewDeliveryAvailable: TextView? = null
     var spinnerDeliveryMen: Spinner? = null
+    var buttonUpdate: Button? = null
     var recyclerViewProducts: RecyclerView? = null
     var adapter: OrderProductsAdapter? = null
     var usersProvider: UsersProvider? = null
+    var orderProvider: OrdersProvider? = null
     var user: User? = null
     var sharedPref: SharedPref? = null
     var idDelivery = ""
@@ -47,6 +54,7 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
         order = gson.fromJson(intent.getStringExtra("order"), Order::class.java)
         getUserFromSession()
         usersProvider = UsersProvider(user?.sessionToken)
+        orderProvider = OrdersProvider(user?.sessionToken!!)
 
         toolbar = findViewById(R.id.toolbar)
         textViewClient = findViewById(R.id.textview_client)
@@ -54,7 +62,9 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
         textViewDate = findViewById(R.id.textview_date)
         textViewTotal = findViewById(R.id.textview_total)
         textViewStatus = findViewById(R.id.textview_status)
+        textViewDeliveryAvailable = findViewById(R.id.textview_delivery_available)
         spinnerDeliveryMen = findViewById(R.id.spinner_delivery_men)
+        buttonUpdate = findViewById(R.id.btn_update)
         recyclerViewProducts = findViewById(R.id.recyclerview_products)
         recyclerViewProducts?.layoutManager = LinearLayoutManager(this)
 
@@ -74,6 +84,59 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
         Log.d(TAG, "Order: ${order.toString()}")
         getTotal()
         getDeliveryMen()
+        buttonUpdate?.setOnClickListener { updateOrder() }
+
+        if (order?.status == "PAGADO") {
+            buttonUpdate?.visibility = View.VISIBLE
+            textViewDeliveryAvailable?.visibility = View.VISIBLE
+            spinnerDeliveryMen?.visibility = View.VISIBLE
+        }
+
+    }
+
+    private fun updateOrder() {
+        order?.idDelivery = idDelivery
+        orderProvider?.updateToDispatched(order!!)?.enqueue(object : Callback<ResponseHttp> {
+            override fun onResponse(call: Call<ResponseHttp>, response: Response<ResponseHttp>) {
+                if (response.body() != null) {
+                    if (response.body()?.isSuccess == true) {
+                        Toast.makeText(
+                            this@RestaurantOrdersDetailActivity,
+                            "Repartidor asignado correctamente",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        goToOrders()
+                    } else {
+                        Toast.makeText(
+                            this@RestaurantOrdersDetailActivity,
+                            "No se pudo asignar el repartidor",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        this@RestaurantOrdersDetailActivity,
+                        "No hubo respuesta del servidor",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseHttp>, t: Throwable) {
+                Toast.makeText(
+                    this@RestaurantOrdersDetailActivity,
+                    "Error: ${t.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+        })
+    }
+
+    private fun goToOrders() {
+        val i = Intent(this, RestaurantHomeActivity::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(i)
     }
 
     private fun getDeliveryMen() {

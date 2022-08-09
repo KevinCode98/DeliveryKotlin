@@ -20,6 +20,10 @@ class OrdersProvider(val token: String) {
         return ordersRoutes?.create(order, token)
     }
 
+    fun updateToDispatched(order: Order): Call<ResponseHttp>? {
+        return ordersRoutes?.updateToDispatched(order, token)
+    }
+
     fun getOrdersByStatus(status: String): Call<ArrayList<Order>>? {
         return ordersRoutes?.getOrdersByStatus(status, token)
     }

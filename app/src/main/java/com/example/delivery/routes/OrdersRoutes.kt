@@ -13,6 +13,12 @@ interface OrdersRoutes {
         @Header("Authorization") token: String
     ): Call<ResponseHttp>
 
+    @PUT("orders/updateToDispatched")
+    fun updateToDispatched(
+        @Body order: Order,
+        @Header("Authorization") token: String
+    ): Call<ResponseHttp>
+
     @GET("orders/findByStatus/{status}")
     fun getOrdersByStatus(
         @Path("status") status: String,
