@@ -35,6 +35,7 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
     var textViewDate: TextView? = null
     var textViewTotal: TextView? = null
     var textViewStatus: TextView? = null
+    var textViewDelivery: TextView? = null
     var textViewDeliveryAvailable: TextView? = null
     var spinnerDeliveryMen: Spinner? = null
     var buttonUpdate: Button? = null
@@ -62,6 +63,7 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
         textViewDate = findViewById(R.id.textview_date)
         textViewTotal = findViewById(R.id.textview_total)
         textViewStatus = findViewById(R.id.textview_status)
+        textViewDelivery = findViewById(R.id.textview_delivery)
         textViewDeliveryAvailable = findViewById(R.id.textview_delivery_available)
         spinnerDeliveryMen = findViewById(R.id.spinner_delivery_men)
         buttonUpdate = findViewById(R.id.btn_update)
@@ -77,6 +79,7 @@ class RestaurantOrdersDetailActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         textViewClient?.text = "${order?.client?.name}  ${order?.client?.lastname}"
+        textViewDelivery?.text = "${order?.delivery?.name}  ${order?.delivery?.lastname}"
         textViewAddress?.text = order?.address?.address
         textViewDate?.text = "${order?.timestamp}"
         textViewStatus?.text = order?.status
