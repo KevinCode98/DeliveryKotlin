@@ -1,4 +1,4 @@
-package com.example.delivery.activities.delivery.orders.map
+package com.example.delivery.activities.client.orders.map
 
 import android.Manifest
 import android.app.Activity
@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -36,7 +37,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
+class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     val TAG = "DeliveryOrdersMap"
     val PERMISSION_ID = 42
     val REQUEST_PHONE_CALL = 30
@@ -47,81 +48,31 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     var markerDelivery: Marker? = null
     var markerAddress: Marker? = null
     var myLocationLatLng: LatLng? = null
+    var deliveryLatLng: LatLng? = null
     var textViewClient: TextView? = null
     var textViewAddress: TextView? = null
     var textViewNeighborhood: TextView? = null
-    var buttonDelivered: Button? = null
     var circleImageUser: CircleImageView? = null
     var imageViewPhone: ImageView? = null
     var orderProvider: OrdersProvider? = null
     var sharedPref: SharedPref? = null
     var order: Order? = null
     var user: User? = null
-    var distanceBetween = 0.0f
     var city = ""
     var country = ""
     var address = ""
 
-
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            // Se obtiene varias veces para obtener la informacion actual
-            var lastLocation = locationResult.lastLocation
-            myLocationLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
-
-            distanceBetween = getDistanceBetween(myLocationLatLng!!, addressLatLng!!)
-            Log.d(TAG, "Distancia: $distanceBetween")
-
-            removeDeliveryMarker()
-            addDeliveryMarker()
-            Log.d("LOCALIZACION", "Callback: $lastLocation")
-        }
-    }
-
-    private fun removeDeliveryMarker() {
-        markerDelivery?.remove()
-    }
-
-    private fun getDistanceBetween(fromLatLng: LatLng, toLatLng: LatLng): Float {
-        var distance = 0.0f
-        val from = Location("")
-        val to = Location("")
-
-        from.latitude = fromLatLng.latitude
-        from.longitude = fromLatLng.longitude
-
-        to.latitude = toLatLng.latitude
-        to.longitude = toLatLng.longitude
-
-        distance = from.distanceTo(to)
-        return distance
-    }
-
-
-    private fun addDeliveryMarker() {
-        markerDelivery = googleMap?.addMarker(
-            MarkerOptions().position(myLocationLatLng).title("Mi posicion")
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.delivery))
-        )
-    }
-
-    private fun addAddressMarker() {
-        val addressLocation = LatLng(order?.address?.lat!!, order?.address?.lng!!)
-
-        markerAddress = googleMap?.addMarker(
-            MarkerOptions().position(addressLocation).title("Entregar aqui")
-                .icon(BitmapDescriptorFactory.fromResource(R.drawable.home))
-        )
-    }
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_delivery_orders_map)
+        setContentView(R.layout.activity_client_orders_map)
         sharedPref = SharedPref(this)
         getUserFromSession()
 
         order = gson.fromJson(intent.getStringExtra("order"), Order::class.java)
+        if (order?.lat != null && order?.lng != null) {
+            deliveryLatLng = LatLng(order?.lat!!, order?.lng!!)
+        }
+
         orderProvider = OrdersProvider(user?.sessionToken!!)
         addressLatLng = LatLng(order?.address?.lat!!, order?.address?.lng!!)
 
@@ -130,30 +81,21 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        textViewClient = findViewById(R.id.textview_client)
+        textViewClient = findViewById(R.id.textview_delivery)
         textViewAddress = findViewById(R.id.textview_address)
         textViewNeighborhood = findViewById(R.id.textview_neighborhood)
         circleImageUser = findViewById(R.id.circleimage_user)
         imageViewPhone = findViewById(R.id.imageview_phone)
-        buttonDelivered = findViewById(R.id.btn_delivered)
 
 
         getLastLocation()
 
-        textViewClient?.text = "${order?.client?.name} ${order?.client?.lastname}"
+        textViewClient?.text = "${order?.delivery?.name} ${order?.delivery?.lastname}"
         textViewAddress?.text = order?.address?.address
         textViewNeighborhood?.text = order?.address?.neighborhood
 
         if (!order?.client?.image.isNullOrBlank()) {
-            Glide.with(this).load(order?.client?.image).into(circleImageUser!!)
-        }
-
-        buttonDelivered?.setOnClickListener {
-            if (distanceBetween <= 400) {
-                updateOrder()
-            } else {
-                Toast.makeText(this, "Acercate mas al lugar de entrega", Toast.LENGTH_LONG).show()
-            }
+            Glide.with(this).load(order?.delivery?.image).into(circleImageUser!!)
         }
 
         imageViewPhone?.setOnClickListener {
@@ -173,32 +115,50 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun updateOrder() {
-        orderProvider?.updateToDelivered(order!!)?.enqueue(object : Callback<ResponseHttp> {
-            override fun onResponse(call: Call<ResponseHttp>, response: Response<ResponseHttp>) {
-                if (response.body() != null) {
-                    Toast.makeText(
-                        this@DeliveryOrdersMapActivity,
-                        "${response.body()?.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
 
-                    if (response.body()?.isSuccess == true) {
-                        goToHome()
-                    }
-                }
-            }
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            // Se obtiene varias veces para obtener la informacion actual
+            var lastLocation = locationResult.lastLocation
+            myLocationLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
 
-            override fun onFailure(call: Call<ResponseHttp>, t: Throwable) {
-                Toast.makeText(
-                    this@DeliveryOrdersMapActivity,
-                    "Error: ${t.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-
-        })
+            removeDeliveryMarker()
+            addDeliveryMarker()
+            Log.d("LOCALIZACION", "Callback: $lastLocation")
+        }
     }
+
+    private fun removeDeliveryMarker() {
+        markerDelivery?.remove()
+    }
+
+    private fun drawRoute() {
+        if (deliveryLatLng != null) {
+            val addressLocation = LatLng(order?.address?.lat!!, order?.address?.lng!!)
+
+            // Dibujar Ruta! :c es de pago! :c
+        }
+    }
+
+
+    private fun addDeliveryMarker() {
+        if (deliveryLatLng != null) {
+            markerDelivery = googleMap?.addMarker(
+                MarkerOptions().position(deliveryLatLng).title("Posicion del repartidor")
+                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.delivery))
+            )
+        }
+    }
+
+    private fun addAddressMarker() {
+        val addressLocation = LatLng(order?.address?.lat!!, order?.address?.lng!!)
+
+        markerAddress = googleMap?.addMarker(
+            MarkerOptions().position(addressLocation).title("Entregar aqui")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.home))
+        )
+    }
+
 
     private fun goToHome() {
         val i = Intent(this, DeliveryHomeActivity::class.java)
@@ -209,7 +169,7 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun call() {
         val i = Intent(Intent.ACTION_CALL)
-        i.data = Uri.parse("tel:${order?.client?.phone}")
+        i.data = Uri.parse("tel:${order?.delivery?.phone}")
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -231,55 +191,34 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun updateLatLng(lat: Double, lng: Double) {
-        order?.lat = lat
-        order?.lng = lng
-
-        orderProvider?.updateLatLng(order!!)?.enqueue(object : Callback<ResponseHttp> {
-            override fun onResponse(call: Call<ResponseHttp>, response: Response<ResponseHttp>) {
-                if (response.body() != null) {
-//                    Toast.makeText(
-//                        this@DeliveryOrdersMapActivity,
-//                        "${response.body()?.message}",
-//                        Toast.LENGTH_LONG
-//                    ).show()
-                }
-            }
-
-            override fun onFailure(call: Call<ResponseHttp>, t: Throwable) {
-                Toast.makeText(
-                    this@DeliveryOrdersMapActivity,
-                    "Error: ${t.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-
-        })
-    }
-
     private fun getLastLocation() {
         if (checkPermission()) {
 
             if (isLocationEnabled()) {
-                requestNewLocationData() // Iniciamos la posicion en tiempo real
                 fusedLocationClient?.lastLocation?.addOnCompleteListener { task ->
                     // Se obtiene solamente una vez la localizacion
                     var location = task.result
+
                     if (location != null) {
                         myLocationLatLng = LatLng(location.latitude, location.longitude)
 
-                        updateLatLng(location.latitude, location.longitude)
                         removeDeliveryMarker()
                         addDeliveryMarker()
                         addAddressMarker()
 
-                        googleMap?.moveCamera(
-                            CameraUpdateFactory.newCameraPosition(
-                                CameraPosition.builder().target(
-                                    LatLng(location.latitude, location.longitude)
-                                ).zoom(15f).build()
+                        if (deliveryLatLng != null) {
+                            googleMap?.moveCamera(
+                                CameraUpdateFactory.newCameraPosition(
+                                    CameraPosition.builder().target(
+                                        LatLng(
+                                            deliveryLatLng?.latitude!!,
+                                            deliveryLatLng?.longitude!!
+                                        )
+                                    ).zoom(15f).build()
+                                )
                             )
-                        )
+                        }
+
                     }
                 }
 
