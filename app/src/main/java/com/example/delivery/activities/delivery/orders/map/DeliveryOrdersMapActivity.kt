@@ -24,9 +24,12 @@ import com.example.delivery.R
 import com.example.delivery.activities.delivery.home.DeliveryHomeActivity
 import com.example.delivery.models.Order
 import com.example.delivery.models.ResponseHttp
+import com.example.delivery.models.SocketEmit
 import com.example.delivery.models.User
 import com.example.delivery.providers.OrdersProvider
 import com.example.delivery.utils.SharedPref
+import com.example.delivery.utils.SocketHandler
+import com.github.nkzawa.socketio.client.Socket
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
@@ -55,6 +58,7 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     var imageViewPhone: ImageView? = null
     var orderProvider: OrdersProvider? = null
     var sharedPref: SharedPref? = null
+    var socket: Socket? = null
     var order: Order? = null
     var user: User? = null
     var distanceBetween = 0.0f
@@ -68,6 +72,7 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
             // Se obtiene varias veces para obtener la informacion actual
             var lastLocation = locationResult.lastLocation
             myLocationLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
+            emitPosition()
 
             distanceBetween = getDistanceBetween(myLocationLatLng!!, addressLatLng!!)
             Log.d(TAG, "Distancia: $distanceBetween")
@@ -76,6 +81,12 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
             addDeliveryMarker()
             Log.d("LOCALIZACION", "Callback: $lastLocation")
         }
+    }
+
+    private fun connectSocket() {
+        SocketHandler.setSocket()
+        socket = SocketHandler.getSocket()
+        socket?.connect()
     }
 
     private fun removeDeliveryMarker() {
@@ -171,6 +182,17 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
                 call()
             }
         }
+        connectSocket()
+    }
+
+    private fun emitPosition() {
+        val data = SocketEmit(
+            id_order = order?.id!!,
+            lat = myLocationLatLng?.latitude!!,
+            lng = myLocationLatLng?.longitude!!
+        )
+
+        socket?.emit("position", data.toJson())
     }
 
     private fun updateOrder() {
@@ -229,6 +251,7 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         if (locationCallback != null && fusedLocationClient != null) {
             fusedLocationClient?.removeLocationUpdates(locationCallback)
         }
+        socket?.disconnect()
     }
 
     private fun updateLatLng(lat: Double, lng: Double) {

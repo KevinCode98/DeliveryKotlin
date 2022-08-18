@@ -25,9 +25,12 @@ import com.example.delivery.R
 import com.example.delivery.activities.delivery.home.DeliveryHomeActivity
 import com.example.delivery.models.Order
 import com.example.delivery.models.ResponseHttp
+import com.example.delivery.models.SocketEmit
 import com.example.delivery.models.User
 import com.example.delivery.providers.OrdersProvider
 import com.example.delivery.utils.SharedPref
+import com.example.delivery.utils.SocketHandler
+import com.github.nkzawa.socketio.client.Socket
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
@@ -56,6 +59,7 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     var imageViewPhone: ImageView? = null
     var orderProvider: OrdersProvider? = null
     var sharedPref: SharedPref? = null
+    var socket: Socket? = null
     var order: Order? = null
     var user: User? = null
     var city = ""
@@ -89,6 +93,7 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
 
         getLastLocation()
+        connectSocket()
 
         textViewClient?.text = "${order?.delivery?.name} ${order?.delivery?.lastname}"
         textViewAddress?.text = order?.address?.address
@@ -115,6 +120,23 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun connectSocket() {
+        SocketHandler.setSocket()
+        socket = SocketHandler.getSocket()
+        socket?.connect()
+
+        socket?.on("position/${order?.id}") { args ->
+            if (args[0] != null) {
+                runOnUiThread {
+                    val data = gson.fromJson(args[0].toString(), SocketEmit::class.java)
+
+                    removeDeliveryMarker()
+                    addDeliveryMarker(data.lat, data.lng)
+                }
+            }
+        }
+    }
+
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
@@ -122,8 +144,8 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
             var lastLocation = locationResult.lastLocation
             myLocationLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
 
-            removeDeliveryMarker()
-            addDeliveryMarker()
+//            removeDeliveryMarker()
+//            addDeliveryMarker(deliveryLatLng?.latitude!!, deliveryLatLng?.longitude!!)
             Log.d("LOCALIZACION", "Callback: $lastLocation")
         }
     }
@@ -141,13 +163,13 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-    private fun addDeliveryMarker() {
-        if (deliveryLatLng != null) {
-            markerDelivery = googleMap?.addMarker(
-                MarkerOptions().position(deliveryLatLng).title("Posicion del repartidor")
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.delivery))
-            )
-        }
+    private fun addDeliveryMarker(lat: Double, lng: Double) {
+        val location = LatLng(lat, lng)
+
+        markerDelivery = googleMap?.addMarker(
+            MarkerOptions().position(location).title("Posicion del repartidor")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.delivery))
+        )
     }
 
     private fun addAddressMarker() {
@@ -189,6 +211,7 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         if (locationCallback != null && fusedLocationClient != null) {
             fusedLocationClient?.removeLocationUpdates(locationCallback)
         }
+        socket?.disconnect()
     }
 
     private fun getLastLocation() {
@@ -203,7 +226,7 @@ class ClientOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
                         myLocationLatLng = LatLng(location.latitude, location.longitude)
 
                         removeDeliveryMarker()
-                        addDeliveryMarker()
+                        addDeliveryMarker(deliveryLatLng?.latitude!!, deliveryLatLng?.longitude!!)
                         addAddressMarker()
 
                         if (deliveryLatLng != null) {
