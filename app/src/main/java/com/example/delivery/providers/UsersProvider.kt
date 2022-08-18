@@ -19,7 +19,7 @@ class UsersProvider(val token: String? = null) {
         val api = ApiRoutes()
         usersRoutes = api.getUsersRoutes()
 
-        if(token != null){
+        if (token != null) {
             usersRoutesToken = api.getUsersRoutesWithToken(token!!)
         }
     }

@@ -3,6 +3,7 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="app/src/main/res/drawable/card_radius.xml" value="0.164" />
         <entry key="app/src/main/res/drawable/edittext_custom.xml" value="0.1655" />
         <entry key="app/src/main/res/drawable/ic_bag.xml" value="0.126" />
         <entry key="app/src/main/res/drawable/ic_person.xml" value="0.331" />

@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
+import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
@@ -20,12 +21,20 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.bumptech.glide.Glide
 import com.example.delivery.R
+import com.example.delivery.activities.delivery.home.DeliveryHomeActivity
 import com.example.delivery.models.Order
+import com.example.delivery.models.ResponseHttp
+import com.example.delivery.models.User
+import com.example.delivery.providers.OrdersProvider
+import com.example.delivery.utils.SharedPref
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import com.google.gson.Gson
 import de.hdodenhof.circleimageview.CircleImageView
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     val TAG = "DeliveryOrdersMap"
@@ -44,7 +53,11 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     var buttonDelivered: Button? = null
     var circleImageUser: CircleImageView? = null
     var imageViewPhone: ImageView? = null
+    var orderProvider: OrdersProvider? = null
+    var sharedPref: SharedPref? = null
     var order: Order? = null
+    var user: User? = null
+    var distanceBetween = 0.0f
     var city = ""
     var country = ""
     var address = ""
@@ -56,6 +69,9 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
             var lastLocation = locationResult.lastLocation
             myLocationLatLng = LatLng(lastLocation.latitude, lastLocation.longitude)
 
+            distanceBetween = getDistanceBetween(myLocationLatLng!!, addressLatLng!!)
+            Log.d(TAG, "Distancia: $distanceBetween")
+
             removeDeliveryMarker()
             addDeliveryMarker()
             Log.d("LOCALIZACION", "Callback: $lastLocation")
@@ -64,6 +80,21 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun removeDeliveryMarker() {
         markerDelivery?.remove()
+    }
+
+    private fun getDistanceBetween(fromLatLng: LatLng, toLatLng: LatLng): Float {
+        var distance = 0.0f
+        val from = Location("")
+        val to = Location("")
+
+        from.latitude = fromLatLng.latitude
+        from.longitude = fromLatLng.longitude
+
+        to.latitude = toLatLng.latitude
+        to.longitude = toLatLng.longitude
+
+        distance = from.distanceTo(to)
+        return distance
     }
 
 
@@ -87,7 +118,12 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_delivery_orders_map)
+        sharedPref = SharedPref(this)
+        getUserFromSession()
+
         order = gson.fromJson(intent.getStringExtra("order"), Order::class.java)
+        orderProvider = OrdersProvider(user?.sessionToken!!)
+        addressLatLng = LatLng(order?.address?.lat!!, order?.address?.lng!!)
 
         val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as? SupportMapFragment
         mapFragment?.getMapAsync(this)
@@ -112,7 +148,13 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
             Glide.with(this).load(order?.client?.image).into(circleImageUser!!)
         }
 
-        buttonDelivered?.setOnClickListener { }
+        buttonDelivered?.setOnClickListener {
+            if (distanceBetween <= 400) {
+                updateOrder()
+            } else {
+                Toast.makeText(this, "Acercate mas al lugar de entrega", Toast.LENGTH_LONG).show()
+            }
+        }
         imageViewPhone?.setOnClickListener {
             if (ActivityCompat.checkSelfPermission(
                     this,
@@ -130,6 +172,40 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun updateOrder() {
+        orderProvider?.updateToDelivered(order!!)?.enqueue(object : Callback<ResponseHttp> {
+            override fun onResponse(call: Call<ResponseHttp>, response: Response<ResponseHttp>) {
+                if (response.body() != null) {
+                    Toast.makeText(
+                        this@DeliveryOrdersMapActivity,
+                        "${response.body()?.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+
+                    if (response.body()?.isSuccess == true) {
+                        goToHome()
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<ResponseHttp>, t: Throwable) {
+                Toast.makeText(
+                    this@DeliveryOrdersMapActivity,
+                    "Error: ${t.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+        })
+    }
+
+    private fun goToHome() {
+        val i = Intent(this, DeliveryHomeActivity::class.java)
+        i.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(i)
+    }
+
+
     private fun call() {
         val i = Intent(Intent.ACTION_CALL)
         i.data = Uri.parse("tel:${order?.client?.phone}")
@@ -145,6 +221,13 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         startActivity(i)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (locationCallback != null && fusedLocationClient != null) {
+            fusedLocationClient?.removeLocationUpdates(locationCallback)
+        }
     }
 
     private fun getLastLocation() {
@@ -261,5 +344,14 @@ class DeliveryOrdersMapActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(map: GoogleMap) {
         googleMap = map
         googleMap?.uiSettings?.isZoomControlsEnabled = true
+    }
+
+    private fun getUserFromSession() {
+        val gson = Gson()
+
+        if (!sharedPref?.getData("user").isNullOrBlank()) {
+            // EXISTE USUARIO
+            user = gson.fromJson(sharedPref?.getData("user"), User::class.java)
+        }
     }
 }

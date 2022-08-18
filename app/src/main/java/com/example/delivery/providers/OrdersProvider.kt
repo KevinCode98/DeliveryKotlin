@@ -24,6 +24,10 @@ class OrdersProvider(val token: String) {
         return ordersRoutes?.updateToDispatched(order, token)
     }
 
+    fun updateToDelivered(order: Order): Call<ResponseHttp>? {
+        return ordersRoutes?.updateToDelivered(order, token)
+    }
+
     fun updateToOnWay(order: Order): Call<ResponseHttp>? {
         return ordersRoutes?.updateToOnWay(order, token)
     }
